@@ -10,21 +10,59 @@ Basicamente, seguí los pasos de este repo/tutorial:
     1. Usando Pi-Imager
     1. Utiliza el [Menu Avanzado](https://www.raspberrypi.com/documentation/computers/getting-started.html#advanced-options) para configurar el acceso SSH y el usuario por defecto (Lite no tiene GUI)
 1. Conectate a la raspberry por SSH
-1. Actualiza el sistema e instala `git` 
+1. `sudo apt update` and `sudo apt upgrade`
+1. Instala los paquetes basicos
+    ```
+    udo apt-get install -y \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        gnupg2 \
+        software-properties-common \
+        git \
+        vim \
+        fail2ban \
+        ntfs-3g
+    ```
+1. Instala Docker
+    ```
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    [It may fail - restart and try again]
+    sudo usermod -aG docker pi
+    #(logout and login)
+    sudo systemctl enable docker
+    ```
+1. Instala docker-compose
+    ```
+    sudo apt-get install libffi-dev libssl-dev
+    sudo apt install python3-dev
+    sudo apt-get install -y python3 python3-pip
+    sudo pip3 install docker-compose
+    ```
+1. Modificá tu docker config para que guarde los temps en el disco (que montas en el siguiente paso):
+    ```
+    sudo vim /etc/default/docker
+    # Agregar esta linea al final con la ruta de tu disco externo montado
+    export DOCKER_TMPDIR="/mnt/storage/docker-tmp"
+    ```
+
 1. Monta el disco usb
     1. sudo su
     1. mkdir /mnt/storage
-    1. fdisk -l
-    1. /dev/sda1 /mnt/storage vfat defaults,uid=1000,gid=1000,umask=022 0 0 | tee -a /etc/fstab
+    1. fdisk -l  (supongamos que tienes /dev/sda1 y es tu disco)
+    1. echo /dev/sda1 /mnt/storage ntfs-3g defaults,auto 0 0 | tee -a /etc/fstab
     1. mount -a
-1. Clona el repositorio del tutorial
-1. Sigue los pasos del tutorial. Algunos pasos detallados a continuación
-1. Revisa los valores del fichero `.env` y pon la contrasena de tu raspberry
-1. Revisa el password de "transmission" en `docker-compose.yaml`. La utilizaras para acceder a la web UI
+
+1. Clona el repositorio de este tutorial (o el original)
+1. Revisa los valores del fichero `.env` y revisa las contrasenas
+    1. Pon un password fuerte para flexget o te dara fallo al iniciar
+    1. Transmission es admin/123456. La necesitas para acceder a la web UI `http://192.168.0.40:32400/web/index.html`
 1. Ejecuta `docker-compose up -d`
-1. Accede a la web usando la IP de la raspberry. `http://192.168.0.40:32400/web/index.html`
+
 1. Configura Plex como se dice en el video
     - Deshabilita transcoding para que la raspberry no colapse.
+    - Habilita la actualizacion automatica cuando haya cambios
 
 ## Adicionalmente
 
@@ -35,7 +73,7 @@ Basicamente, seguí los pasos de este repo/tutorial:
 
 1. Edita `yourfile.ovpn` como se indica en el link anterior para enlazar el fichero de credentiales.
 
-1. Crea este script en tu carpeta personal `check_vpn.sh` 
+1. Crea este script en tu carpeta personal `vpn/vpn_check.sh` 
     ```
     if [ "0" == `ifconfig | grep tun0 | wc -l` ]; 
     then 
@@ -46,7 +84,7 @@ Basicamente, seguí los pasos de este repo/tutorial:
     fi
     ```
 1. Crea un cron que lo ejecute
-    > 15 0 * * *  /home/pi/check_vpn.sh >> /home/pi/vpn_cron.log 2>&1
+    > */15 0 * * *  /home/pi/vpn/vpn_check.sh >> /home/pi/vpn/vpn_cron.log 2>&1
 
 
 
@@ -57,10 +95,10 @@ Basicamente, seguí los pasos de este repo/tutorial:
 magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big%20Buck%20Bunny%20%282008%29&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.empire-js.us%3A1337&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F)"
 
 1. Ejecuta flexget para mueva el fichero a Plex
-> docker-compose exec flexget flexget execute --dump --tasks sort_movies
+> docker-compose exec flexget flexget execute --dump --tasks sort_tv (or sort_movies)
 
 1. Si necesitas relanzar el comando, primero necesitas que flexget "olvide" que ya lo hizo
 > docker-compose exec flexget flexget seen forget file:///downloads/complete/Big%20Buck%20Bunny%20%282008%29/Big%20Buck%20Bunny.mp4 
 
-
+1. Si algo falla utiliza los logs `docker-compose logs flexget`
 
