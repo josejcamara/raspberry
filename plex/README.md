@@ -96,7 +96,8 @@ Nota: El repo ya contiene la configuracion en el directorio vpn, pero estos son 
     if [ "0" == `ifconfig | grep tun0 | wc -l` ]; 
     then 
         echo `date` No VPN!! Reconnecting
-        sudo -b $SCRIPT_DIR/es-mad-surfshark.ovpn
+        sudo -b openvpn $SCRIPT_DIR/es-mad-surfshark.ovpn   # (if the ovpn file contains auth-user-pass)
+        # sudo -b openvpn --config $SCRIPT_DIR/es-mad-surfshark.ovpn --auth-user-pass $SCRIPT_DIR/surfshark.pass
     else
         echo `date` VPN still up 
     fi
@@ -114,15 +115,15 @@ cd ~/repos/raspberry/plex
 
 case $1 in
 "start")
-        bash ./vpn/vpn_check.sh &
-        docker-compose up -d
-        ;;
+	cd vpn && bash vpn_check.sh & 	# Needs to cd into vpn to take the right path for the .pass file
+	docker-compose up -d
+	;;
 "stop")
-        docker-compose down
-        ;;
+	docker-compose down
+	;;
 *)
-        echo "Argumentos validos: start|stop"
-        ;;
+	echo "Argumentos validos: start|stop"
+	;;
 esac
 ```
 
