@@ -103,7 +103,7 @@ Nota: El repo ya contiene la configuracion en el directorio vpn, pero estos son 
     fi
     ```
 1. Crea un cron que lo ejecute
-    > */15 0 * * *  <tu_repo>/vpn/vpn_check.sh >> <tu_repo>/vpn/vpn_cron.log 2>&1
+    > */15 0 * * *  /home/pi/repos/raspberry/plex/vpn/vpn_check.sh >> /home/pi/vpn_cron.log 2>&1
 
 ### Script de inicio
 Puedes poner este script en tu home para iniciar el servicio mas rápido
