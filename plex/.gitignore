@@ -1,0 +1,10 @@
+.DS_Store
+
+.env
+*.log
+
+downloads/*
+media/*
+plex/*
+
+
