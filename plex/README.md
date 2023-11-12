@@ -1,6 +1,12 @@
-# Montar servidor Plex en Raspberry
+# Montar servidor Plex en Raspberry con Docker
 
-Basicamente, seguí los pasos de este repo/tutorial:  
+Con este repo puedes crear tu propio server que descarga tus series y peliculas automáticamente, y cuando finaliza, las copia al directorio `media/` donde Plex las encuentra y las agrega a tu biblioteca.
+
+También contiene un pequeño server samba por si quieres compartir los archivos por red.
+
+NOTA: Este repo fue configurado para correr usando flexget y transmission [en este video](https://youtu.be/TqVoHWjz_tI)
+
+Basicamente, seguí los pasos de este tutorial:  
 - https://github.com/pablokbs/plex-rpi
 - https://www.youtube.com/watch?v=7LiHtL-veCc&list=WL&index=13
 
@@ -13,7 +19,7 @@ Basicamente, seguí los pasos de este repo/tutorial:
 1. `sudo apt update` and `sudo apt upgrade`
 1. Instala los paquetes basicos
     ```
-    udo apt-get install -y \
+    sudo apt-get install -y \
         apt-transport-https \
         ca-certificates \
         curl \
@@ -40,7 +46,7 @@ Basicamente, seguí los pasos de este repo/tutorial:
     sudo apt-get install -y python3 python3-pip
     sudo pip3 install docker-compose
     ```
-1. Modificá tu docker config para que guarde los temps en el disco (que montas en el siguiente paso):
+1. Modificá tu docker config para que guarde los temps en el disco (que montas en el siguiente paso) en vez de en la SD:
     ```
     sudo vim /etc/default/docker
     # Agregar esta linea al final con la ruta de tu disco externo montado
@@ -54,39 +60,71 @@ Basicamente, seguí los pasos de este repo/tutorial:
     1. echo /dev/sda1 /mnt/storage ntfs-3g defaults,auto 0 0 | tee -a /etc/fstab
     1. mount -a
 
-1. Clona el repositorio de este tutorial (o el original)
+1. Clona el repositorio de este tutorial (o el original) en tu home.
 1. Revisa los valores del fichero `.env` y revisa las contrasenas
     1. Pon un password fuerte para flexget o te dara fallo al iniciar
-    1. Transmission es admin/123456. La necesitas para acceder a la web UI `http://192.168.0.40:32400/web/index.html`
+    1. Transmission está preconfigurado con `admin/123456`. 
+
 1. Ejecuta `docker-compose up -d`
 
 1. Configura Plex como se dice en el video
     - Deshabilita transcoding para que la raspberry no colapse.
     - Habilita la actualizacion automatica cuando haya cambios
 
+## URLs
+
+- **Transmission**: http://<raspberry_ip>:9091/transmission/web/
+- **Plex**: http://<raspberry_ip>:32400/web/index.html
+
 ## Adicionalmente
 
 ### Instala VPN
-1. Descarga el [fichero ovpn](https://support.surfshark.com/hc/en-us/articles/360013425373-How-to-set-up-Surfshark-VPN-on-Raspberry-Pi-) en `/home/pi/vpn/yourfile.ovpn`
+Nota: El repo ya contiene la configuracion en el directorio vpn, pero estos son los pasos a seguir en caso que se cambie de proveedor.
+1. Descarga el [fichero ovpn](https://support.surfshark.com/hc/en-us/articles/360013425373-How-to-set-up-Surfshark-VPN-on-Raspberry-Pi-) en `<tu_repo>/vpn/yourfile.ovpn`
 
-1. Crea un [fichero "pass"](https://www.ivpn.net/setup/linux-terminal/) para tomar las credenciales automaticamente en  `/home/pi/vpn/surfshark.pass`
+1. Crea un [fichero "pass"](https://www.ivpn.net/setup/linux-terminal/) para tomar las credenciales automaticamente en  `<tu_repo>/vpn/surfshark.pass`
 
 1. Edita `yourfile.ovpn` como se indica en el link anterior para enlazar el fichero de credentiales.
 
-1. Crea este script en tu carpeta personal `vpn/vpn_check.sh` 
+1. Crea este script en `<tu_repo>/vpn/vpn_check.sh` 
     ```
+    #!/bin/bash
+    set -e
+
+    SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
     if [ "0" == `ifconfig | grep tun0 | wc -l` ]; 
     then 
         echo `date` No VPN!! Reconnecting
-        sudo -b openvpn /home/pi/vpn/es-mad-surfshark.ovpn
+        sudo -b $SCRIPT_DIR/es-mad-surfshark.ovpn
     else
         echo `date` VPN still up 
     fi
     ```
 1. Crea un cron que lo ejecute
-    > */15 0 * * *  /home/pi/vpn/vpn_check.sh >> /home/pi/vpn/vpn_cron.log 2>&1
+    > */15 0 * * *  <tu_repo>/vpn/vpn_check.sh >> <tu_repo>/vpn/vpn_cron.log 2>&1
 
+### Script de inicio
+Puedes poner este script en tu home para iniciar el servicio mas rápido
+```
+#!/bin/bash
+set -e
 
+cd ~/repos/raspberry/plex 
+
+case $1 in
+"start")
+        bash ./vpn/vpn_check.sh &
+        docker-compose up -d
+        ;;
+"stop")
+        docker-compose down
+        ;;
+*)
+        echo "Argumentos validos: start|stop"
+        ;;
+esac
+```
 
 ## Pruebas 
 (descrito en el video tutorial):
@@ -99,6 +137,8 @@ magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big%20Buck%20Bun
 
 1. Si necesitas relanzar el comando, primero necesitas que flexget "olvide" que ya lo hizo
 > docker-compose exec flexget flexget seen forget file:///downloads/complete/Big%20Buck%20Bunny%20%282008%29/Big%20Buck%20Bunny.mp4 
+
+## Troubleshooting
 
 1. Si algo falla utiliza los logs `docker-compose logs flexget`
 
